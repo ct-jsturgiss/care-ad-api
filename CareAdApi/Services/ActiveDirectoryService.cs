@@ -127,15 +127,16 @@ namespace CareAdApi.Services
                                     string? newManagerCn = GetCommonName(managerUser.DistinguishedName);
                                     m_logger.Information("User principal: '{p}'; New Manager: '{id}'", update.PrincipalName, newManagerCn ?? managerUser.DistinguishedName);
                                 }
-                                else
-                                {
-                                    Console.WriteLine("Could not find manager. No updates applied.");
-                                }
                             }
                         }
                         catch(Exception ex)
                         {
-
+                            resp.Errors.Add(new ProcessError()
+                            {
+                                ErrorType = ErrorType.Unknown,
+                                UserPrincipalName = update.PrincipalName ?? string.Empty,
+                                Messages = [$"Unexpected error: {ex.Message}"]
+                            });
                         }
                     }
                 }

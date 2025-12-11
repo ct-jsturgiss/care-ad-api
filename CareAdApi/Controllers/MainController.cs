@@ -25,6 +25,11 @@ namespace CareAdAsync.Controllers
             try
             {
                 updates = updates ?? [];
+                if(updates.Length == 0)
+                {
+                    return NoUpdates().Result;
+                }
+
                 AttributeUpdateResponse resp = await m_adService.UpdateAttributesAsync(updates);
 
                 return new JsonResult(resp);
@@ -36,13 +41,24 @@ namespace CareAdAsync.Controllers
             finally { }
         }
 
+        private Task<JsonResult> NoUpdates()
+        {
+            ProcessError[] errs = [new ProcessError() {
+                ErrorType = ErrorType.User,
+                Messages = ["No updates provided."]
+            }];
+
+            return Task.FromResult(new JsonResult(new AttributeUpdateResponse() { Errors = errs.ToList() }));
+        }
+
         private Task<JsonResult> Error(Exception ex)
         {
             ProcessError[] errs = [new ProcessError() {
                 ErrorType = ErrorType.Unknown,
                 Messages = [ex.Message]
             }];
-            return Task.FromResult(new JsonResult(new { errors = errs }));
+
+            return Task.FromResult(new JsonResult(new AttributeUpdateResponse() { Errors = errs.ToList() }));
         }
     }
 }

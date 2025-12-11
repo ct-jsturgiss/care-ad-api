@@ -1,4 +1,5 @@
 using CareAdApi;
+using CareAdApi.Configuration;
 using CareAdApi.Services;
 using CareAdAsync.Controllers;
 using Microsoft.Extensions.Logging.Configuration;
@@ -10,13 +11,19 @@ namespace CareAdAsync
 {
     public class Program
     {
-        private static LogEventLevel level = LogEventLevel.Information;
+        private static LogEventLevel m_level = LogEventLevel.Information;
+        private static LocalConfigFile m_config = null!;
 
         public static void Main(string[] args)
         {
-            level = GetLogLevel(args);
+            m_level = GetLogLevel(args);
             ConfigureLogging();
             PrintAppStart();
+
+            if (!LoadConfig())
+            {
+                return;
+            }
 
             var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +41,10 @@ namespace CareAdAsync
             // Add Services and Controllers
             builder.Services.AddSingleton<MainController>();
             builder.Services.AddSingleton<ActiveDirectoryService>();
+            builder.Services.AddScoped<BasicAuthMiddleware>();
+
+            // Add data
+            builder.Services.AddSingleton(m_config);
 
             Log.Logger.Information("Building host...");
             var app = builder.Build();
@@ -48,9 +59,37 @@ namespace CareAdAsync
 
             app.MapControllers();
 
+            app.UseCors(opt =>
+            {
+                opt.WithMethods("POST");
+                opt.WithOrigins("https://*.powerapps.com", "https://localhost:7078");
+            });
+
+            app.UseMiddleware<BasicAuthMiddleware>();
+
             Log.Logger.Information("Starting...");
             app.Run();
 
+        }
+
+        private static bool LoadConfig()
+        {
+            Log.Logger.Information("Loading config...");
+            var file = LocalConfigFile.LoadFile();
+            if(file == null)
+            {
+                LocalConfigFile.SaveFile(new LocalConfigFile());
+                Log.Logger.Error("No local config file exists. A new one will be created but it must be configured.");
+                return false;
+            }
+            if (string.IsNullOrEmpty(file.HeaderKey))
+            {
+                Log.Logger.Error("No header key specified. This must be specified to support basic auth.");
+                return false;
+            }
+            m_config = file;
+
+            return true;
         }
 
         private static LogEventLevel GetLogLevel(IEnumerable<string> args)
@@ -75,11 +114,11 @@ namespace CareAdAsync
             string logFile = Path.Combine(logDir, Constants.LogTemplateName);
             Directory.CreateDirectory(logDir);
             Serilog.ILogger logger = new LoggerConfiguration()
-                .MinimumLevel.Is(level)
+                .MinimumLevel.Is(m_level)
                 .WriteTo
-                    .Console(level, outputTemplate: Constants.LoggingConstants.ConsoleFormat)
+                    .Console(m_level, outputTemplate: Constants.LoggingConstants.ConsoleFormat)
                 .WriteTo
-                    .File(logFile, level, rollingInterval: RollingInterval.Day, outputTemplate: Constants.LoggingConstants.FileFormat)
+                    .File(logFile, m_level, rollingInterval: RollingInterval.Day, outputTemplate: Constants.LoggingConstants.FileFormat)
                 .CreateLogger();
             Log.Logger = logger;
 
@@ -95,7 +134,7 @@ namespace CareAdAsync
             Console.WriteLine(sb.ToString());
 
             Log.Logger.Information("--SERVICE START--");
-            Log.Logger.Information("Log Level: '{ll}'", level);
+            Log.Logger.Information("Log Level: '{ll}'", m_level);
         }
     }
 }

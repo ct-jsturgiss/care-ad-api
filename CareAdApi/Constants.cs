@@ -8,6 +8,8 @@
         public const string ArgLogLevel = "--loglevel";
         public const string DomainTarget = "caretaker.local";
 
+        public const string LocalConfigFile = "app-local-cfg.json";
+
         public static class LoggingConstants
         {
             public const string ConsoleFormat = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
@@ -19,6 +21,11 @@
             public const string UserPrincipal = "userPrincipal";
             public const string EmployeeId = "employeeId";
             public const string ManagerPrincipal = "manager";
+        }
+
+        public static class Headers
+        {
+            public const string HeaderKey = "capp-key";
         }
     }
 }

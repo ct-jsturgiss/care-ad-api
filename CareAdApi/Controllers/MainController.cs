@@ -1,6 +1,7 @@
 ﻿using CareAdApi.Models;
 using CareAdApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using ILogger = Serilog.ILogger;
 
 namespace CareAdAsync.Controllers
 {
@@ -23,17 +24,10 @@ namespace CareAdAsync.Controllers
         {
             try
             {
-                await Task.Delay(0);
-                return new JsonResult(new AttributeUpdateResponse()
-                {
-                    Success = updates.Select(x => x.PrincipalName!).ToList(),
-                    Errors = updates.Select(x => 
-                        new ProcessError() { 
-                            ErrorType = ErrorType.User, 
-                            UserPrincipalName = x.PrincipalName!, 
-                            Messages = ["Random Error 1", "Random Error 2"] }
-                    ).ToList()
-                });
+                updates = updates ?? [];
+                AttributeUpdateResponse resp = await m_adService.UpdateAttributesAsync(updates);
+
+                return new JsonResult(resp);
             }
             catch(Exception ex)
             {
@@ -48,7 +42,7 @@ namespace CareAdAsync.Controllers
                 ErrorType = ErrorType.Unknown,
                 Messages = [ex.Message]
             }];
-            return Task.FromResult(new JsonResult(errs));
+            return Task.FromResult(new JsonResult(new { errors = errs }));
         }
     }
 }

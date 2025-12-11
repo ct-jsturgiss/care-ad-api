@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace CareAdApi.Models
 {
@@ -14,10 +15,13 @@ namespace CareAdApi.Models
         public string[] Messages { get; set; } = [];
     }
 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ErrorType
     {
         None = 0,
+        [JsonStringEnumMemberName("Unknown")]
         Unknown = 1,
+        [JsonStringEnumMemberName("User")]
         User = 2,
     }
 }

@@ -13,6 +13,9 @@ namespace CareAdApi.Helpers
             PropertyInfo[] props = objType.GetProperties();
             foreach(PropertyInfo prop in props)
             {
+                JsonIgnoreAttribute? attrIgn = prop.GetCustomAttribute<JsonIgnoreAttribute>();
+                if(attrIgn != null) { continue; }
+
                 JsonPropertyNameAttribute? attr = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
                 if(attr != null)
                 {

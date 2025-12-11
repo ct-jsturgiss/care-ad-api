@@ -11,12 +11,11 @@
     },
     "https": {
       "commandName": "Project",
-      "launchUrl": "weatherforecast",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "https://localhost:7078;http://localhost:5253"
+      "applicationUrl": "https://10.10.40.7:9901;https://localhost:7078;http://localhost:5253"
     },
     "IIS Express": {
       "commandName": "IISExpress",

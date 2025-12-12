@@ -27,6 +27,7 @@ namespace CareAdApi.Services
 
                     foreach(AttributesUpdate update in ups)
                     {
+                        bool updated = false;
                         try
                         {
                             m_logger.Information("Processing update for principal '{p}'", update.PrincipalName ?? string.Empty);
@@ -102,9 +103,15 @@ namespace CareAdApi.Services
                                 attrEmpId.Add(update.EmployeeId);
                                 ModifyRequest mr = new ModifyRequest(targetUser.DistinguishedName, attrEmpId);
                                 m_logger.Information("Updating attribute '{a}' for user principal '{p}'", Constants.AttrConstants.EmployeeId, update.PrincipalName);
+
+#if DEBUG
                                 m_logger.Debug("## SEND REQUEST DISABLED ##");
-                                //lc.SendRequest(mr);
+#else
+                                lc.SendRequest(mr);
+#endif
+
                                 m_logger.Information("User principal: '{p}'; New Employee Id: '{id}'", update.PrincipalName, update.EmployeeId);
+                                updated = true;
                             }
                             if (!string.IsNullOrEmpty(update.ManagerPrincipalName))
                             {
@@ -122,21 +129,31 @@ namespace CareAdApi.Services
                                     attrManagerName.Add(managerUser.DistinguishedName);
                                     ModifyRequest mr = new ModifyRequest(targetUser.DistinguishedName, attrManagerName);
                                     m_logger.Information("Updating attribute '{a}' for user principal '{p}'", Constants.AttrConstants.ManagerPrincipal, update.PrincipalName);
+#if DEBUG
                                     m_logger.Debug("## SEND REQUEST DISABLED ##");
-                                    //lc.SendRequest(mr);
+#else
+                                    lc.SendRequest(mr);
+#endif                                    
                                     string? newManagerCn = GetCommonName(managerUser.DistinguishedName);
                                     m_logger.Information("User principal: '{p}'; New Manager: '{id}'", update.PrincipalName, newManagerCn ?? managerUser.DistinguishedName);
+                                    updated = true;
                                 }
                             }
                         }
                         catch(Exception ex)
                         {
+                            updated = false;
                             resp.Errors.Add(new ProcessError()
                             {
                                 ErrorType = ErrorType.Unknown,
                                 UserPrincipalName = update.PrincipalName ?? string.Empty,
                                 Messages = [$"Unexpected error: {ex.Message}"]
                             });
+                        }
+
+                        if (updated)
+                        {
+                            resp.Success.Add(update.PrincipalName! ?? string.Empty);
                         }
                     }
                 }

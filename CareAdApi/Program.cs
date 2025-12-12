@@ -56,6 +56,27 @@ namespace CareAdAsync
             // Add data
             builder.Services.AddSingleton(m_config);
 
+            // Host filtering
+            string allowedHosts = builder.Configuration.GetValue<string>("AllowedHosts") ?? string.Empty;
+            builder.Services.AddHostFiltering(opt =>
+            {
+                opt.IncludeFailureMessage = false;
+                opt.AllowEmptyHosts = false;
+                opt.AllowedHosts = allowedHosts.Split(';');
+            });
+
+            // Add Cors
+            builder.Services.AddCors(opt =>
+            {
+                opt.AddDefaultPolicy(p =>
+                {
+                    p.WithOrigins("https://powerapps.com")
+                        .SetIsOriginAllowedToAllowWildcardSubdomains()
+                        .WithMethods("POST")
+                        .WithHeaders(Constants.Headers.HeaderKey);
+                });
+            });
+
             Log.Logger.Information("Building host...");
             var app = builder.Build();
 
@@ -65,17 +86,15 @@ namespace CareAdAsync
 
             app.UseHttpsRedirection();
 
+            app.UseHostFiltering();
+
+            app.UseCors(); // Before auth
+
+            app.UseMiddleware<BasicAuthMiddleware>();
+
             app.UseAuthorization();
 
             app.MapControllers();
-
-            app.UseCors(opt =>
-            {
-                opt.WithMethods("POST");
-                opt.WithOrigins("https://*.powerapps.com", "https://localhost:7078");
-            });
-
-            app.UseMiddleware<BasicAuthMiddleware>();
 
             Log.Logger.Information("Starting...");
             app.Run();

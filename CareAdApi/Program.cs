@@ -5,19 +5,21 @@ using CareAdAsync.Controllers;
 using Microsoft.Extensions.Logging.Configuration;
 using Serilog;
 using Serilog.Events;
+using System.Net;
 using System.Text;
 
 namespace CareAdAsync
 {
     public class Program
     {
-        private static LogEventLevel m_level = LogEventLevel.Information;
+        //private static LogEventLevel m_level = LogEventLevel.Information;
         private static LocalConfigFile m_config = null!;
 
         public static void Main(string[] args)
         {
-            m_level = GetLogLevel(args);
-            ConfigureLogging();
+            var builder = WebApplication.CreateBuilder(args);
+
+            ConfigureLogging(builder);
             PrintAppStart();
 
             if (!LoadConfig())
@@ -25,10 +27,18 @@ namespace CareAdAsync
                 return;
             }
 
-            var builder = WebApplication.CreateBuilder(args);
-
             builder.Host.UseSerilog(Log.Logger, true);
-
+            builder.WebHost.UseKestrel(opt =>
+            {
+                opt.Listen(IPAddress.Loopback, Constants.LocalPort, lopt =>
+                {
+                    lopt.UseHttps();
+                });
+                opt.Listen(IPEndPoint.Parse(Constants.Endpoint), lopt =>
+                {
+                    lopt.UseHttps(m_config.Certificate, m_config.PlainCertificateKey);
+                });
+            });
             // Add services to the container.
 
             builder.Services.AddWindowsService(opt =>
@@ -92,33 +102,17 @@ namespace CareAdAsync
             return true;
         }
 
-        private static LogEventLevel GetLogLevel(IEnumerable<string> args)
-        {
-            List<string> argsList = new List<string>(args);
-            int idx = argsList.IndexOf(Constants.ArgLogLevel);
-            if (idx == -1)
-            {
-                string? val = argsList.ElementAtOrDefault(idx + 1);
-                if (!string.IsNullOrEmpty(val))
-                {
-                    return Enum.Parse<LogEventLevel>(val);
-                }
-            }
-
-            return LogEventLevel.Information;
-        }
-
-        private static Serilog.ILogger ConfigureLogging()
+        private static Serilog.ILogger ConfigureLogging(IHostApplicationBuilder builder)
         {
             string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
             string logFile = Path.Combine(logDir, Constants.LogTemplateName);
             Directory.CreateDirectory(logDir);
-            Serilog.ILogger logger = new LoggerConfiguration()
-                .MinimumLevel.Is(m_level)
+            LoggerConfiguration lc = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration);
+            Serilog.ILogger logger = lc
                 .WriteTo
-                    .Console(m_level, outputTemplate: Constants.LoggingConstants.ConsoleFormat)
+                    .Console(outputTemplate: Constants.LoggingConstants.ConsoleFormat)
                 .WriteTo
-                    .File(logFile, m_level, rollingInterval: RollingInterval.Day, outputTemplate: Constants.LoggingConstants.FileFormat)
+                    .File(logFile, rollingInterval: RollingInterval.Day, outputTemplate: Constants.LoggingConstants.FileFormat)
                 .CreateLogger();
             Log.Logger = logger;
 
@@ -127,6 +121,7 @@ namespace CareAdAsync
 
         private static void PrintAppStart()
         {
+            LogEventLevel level = Enum.GetValues<LogEventLevel>().Where(Log.IsEnabled).Min();
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(Constants.ServiceName);
             sb.AppendLine(Constants.Copyright);
@@ -134,7 +129,7 @@ namespace CareAdAsync
             Console.WriteLine(sb.ToString());
 
             Log.Logger.Information("--SERVICE START--");
-            Log.Logger.Information("Log Level: '{ll}'", m_level);
+            Log.Logger.Information("Log Level: '{ll}'", level);
         }
     }
 }

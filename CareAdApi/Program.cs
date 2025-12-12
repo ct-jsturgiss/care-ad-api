@@ -30,10 +30,12 @@ namespace CareAdAsync
             builder.Host.UseSerilog(Log.Logger, true);
             builder.WebHost.UseKestrel(opt =>
             {
+#if DEBUG
                 opt.Listen(IPAddress.Loopback, Constants.LocalPort, lopt =>
                 {
                     lopt.UseHttps();
                 });
+#endif
                 opt.Listen(IPEndPoint.Parse(Constants.Endpoint), lopt =>
                 {
                     lopt.UseHttps(m_config.Certificate, m_config.PlainCertificateKey);
@@ -45,6 +47,7 @@ namespace CareAdAsync
             {
                 opt.ServiceName = Constants.ServiceName;
             });
+            builder.Services.AddHostedService<ApiBackgroundService>();
 
             builder.Services.AddControllers();
 

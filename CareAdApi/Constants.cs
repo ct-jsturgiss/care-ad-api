@@ -9,6 +9,9 @@
         public const string DomainTarget = "caretaker.local";
 
         public const string LocalConfigFile = "app-local-cfg.json";
+        public const string KeyFileName = "api.key";
+        public const int LocalPort = 7078;
+        public const string Endpoint = "10.10.40.7:9901";
 
         public static class LoggingConstants
         {
